@@ -55,9 +55,23 @@ using input = std::vector<std::string>;
 using operation = std::variant<mov, inc, dec, jnz>;
 using ops = std::vector<operation>;
 
+operation parse(const std::string &line)
+{
+    if (line.substr(0, 3) == "inc")
+    {
+        return inc{line.at(4)};
+    }
+    return {};
+}
+
 ops parse(const input &program)
 {
-    return {};
+    ops result{};
+    for (const auto &line : program)
+    {
+        result.push_back(parse(line));
+    }
+    return result;
 }
 
 result assembler(const input &)
