@@ -57,15 +57,21 @@ using ops = std::vector<operation>;
 
 operation parse(const std::string &line)
 {
-    if (line.substr(0, 3) == "inc")
+    const auto &op_name = line.substr(0, 3);
+    if (op_name == "inc")
     {
         return inc{line.at(4)};
     }
-    if (line.substr(0, 3) == "dec")
+    if (op_name == "dec")
     {
         return dec{line.at(4)};
     }
-    return {};
+    if (op_name == "mov")
+    {
+        return mov{line.at(4), std::stoi(std::string(1, line.at(6)))}; //todo: temp single digit support
+    }
+
+    return {}; //TODO should not happen, terminate
 }
 
 ops parse(const input &program)
@@ -96,4 +102,5 @@ TEST_CASE("parser_test", "")
 {
     REQUIRE(parse(input{"inc a"}) == ops{inc{'a'}});
     REQUIRE(parse(input{"dec r"}) == ops{dec{'r'}});
+    REQUIRE(parse(input{"mov r 3"}) == ops{mov{'r', 3}});
 }
