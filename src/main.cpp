@@ -2,7 +2,9 @@
 
 #include <unordered_map>
 #include <vector>
+#include <iterator>
 #include <string>
+#include <algorithm>
 #include <variant>
 
 #define CATCH_CONFIG_MAIN
@@ -84,9 +86,44 @@ ops parse(const input &program)
     return result;
 }
 
-result assembler(const input &)
+using memory_t = std::unordered_map<char, int>;
+
+struct operation_visitor {
+    void operator ()(const inc& op){
+        mem[op.reg]++;
+    }
+    void operator ()(const dec& op){
+        mem[op.reg]--;
+    }
+    void operator ()(const mov& op){
+        mem[op.reg] = std::get<int>(op.value); //todo read register value
+    }
+    void operator ()(const jnz&){
+        std::terminate(); // not implemented
+    }
+    memory_t& mem;
+};
+
+void process_operation(const operation& op, memory_t& memory){
+    std::visit(operation_visitor{memory}, op);
+}
+
+result memory_to_result(const memory_t& mem){
+    result out{};
+    std::transform(std::cbegin(mem), std::cend(mem), std::inserter(out, out.end()), [](const auto& el){
+        return result::value_type{std::string(1, el.first), el.second};
+    });
+    return out;
+}
+
+result assembler(const input& in)
 {
-    return {{"a", 0}};
+    const auto operations{parse(in)};
+    memory_t memory;
+    for(const auto& op : operations){
+        process_operation(op, memory);
+    }
+    return memory_to_result(memory); // don't like the register name stored as string:/
 }
 
 TEST_CASE("kata_test", "[tag_foo]")
@@ -103,4 +140,11 @@ TEST_CASE("parser_test", "")
     REQUIRE(parse(input{"inc a"}) == ops{inc{'a'}});
     REQUIRE(parse(input{"dec r"}) == ops{dec{'r'}});
     REQUIRE(parse(input{"mov r 3"}) == ops{mov{'r', 3}});
+}
+
+TEST_CASE("simple_inc_and_dec_test", "")
+{
+    input program{"mov a 5", "inc a", "dec a", "dec a"};
+    result out{{"a", 4}};
+    REQUIRE(assembler(program) == out);
 }
