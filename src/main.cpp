@@ -47,6 +47,7 @@ using result = std::unordered_map<std::string, int>;
 using input = std::vector<std::string>;
 using operation = std::variant<mov, inc, dec, jnz>;
 using ops = std::vector<operation>;
+using offset_t = constant;
 
 operation parse(const std::string& line)
 {
@@ -89,28 +90,43 @@ ops parse(const input& program)
 
 using memory_t = std::unordered_map<char, int>;
 
-struct mov_visitor {
-    constant operator()(constant c) { return c; }
-    constant operator()(reg_t r) { return mem.at(r); }
+struct value_accessor {
+    constant operator()(constant c) const { return c; }
+    constant operator()(reg_t r) const { return mem.at(r); }
     const memory_t& mem;
 };
 
 struct operation_visitor {
-    void operator()(const inc& op) { mem[op.reg]++; }
-    void operator()(const dec& op) { mem[op.reg]--; }
-    void operator()(const mov& op)
+    constexpr static offset_t no_offset { 0 };
+    offset_t operator()(const inc& op)
     {
-        mem[op.reg] = std::visit(mov_visitor { mem }, op.value);
+        mem[op.reg]++;
+        return no_offset;
     }
-    void operator()(const jnz&)
+    offset_t operator()(const dec& op)
     {
+        mem[op.reg]--;
+        return no_offset;
+    }
+    offset_t operator()(const mov& op)
+    {
+        mem[op.reg] = std::visit(value_accessor { mem }, op.value);
+        return no_offset;
+    }
+    offset_t operator()(const jnz& op)
+    {
+        const value_accessor accessor { mem };
+        if (std::visit(accessor, op.x) == 0) {
+            return no_offset;
+        }
+        return std::visit(accessor, op.y);
     }
     memory_t& mem;
 };
 
-void process_operation(const operation& op, memory_t& memory)
+offset_t process_operation(const operation& op, memory_t& memory)
 {
-    std::visit(operation_visitor { memory }, op);
+    return std::visit(operation_visitor { memory }, op);
 }
 
 result memory_to_result(const memory_t& mem)
@@ -128,8 +144,10 @@ result assembler(const input& in)
 {
     const auto operations { parse(in) };
     memory_t memory;
-    for (const auto& op : operations) {
-        process_operation(op, memory);
+    unsigned i { 0 };
+    while (i < operations.size()) {
+        const auto offset = process_operation(operations.at(i), memory);
+        i = i + 1 + offset;
     }
     return memory_to_result(memory); // don't like the register name stored as string:/
 }
@@ -191,4 +209,11 @@ TEST_CASE("jnz_no_operation", "")
     REQUIRE(assembler(program3) == out);
     const input program4 { "jnz 9 0" };
     REQUIRE(assembler(program4) == out);
+}
+
+TEST_CASE("jnz_move_forward", "")
+{
+    const input program { "jnz 6 1", "mov a 1", "mov b 10" };
+    const result out { { "b", 10 } };
+    REQUIRE(assembler(program) == out);
 }
