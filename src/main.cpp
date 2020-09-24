@@ -1,6 +1,7 @@
 // https://www.codewars.com/kata/58e24788e24ddee28e000053/train/cpp
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 #include <string>
 #include <unordered_map>
@@ -58,8 +59,12 @@ operation parse(const std::string& line)
     }
     if (op_name == "mov") {
         constexpr auto value_offset = 6u;
+        const reg_t register_to_set = line.at(4);
+        if (std::isalpha(line.at(value_offset))) {
+            return mov { register_to_set, line.at(value_offset) };
+        }
         const std::string& value = line.substr(value_offset, line.length() - value_offset);
-        return mov { line.at(4), std::stoi(value) }; // todo: assumed constant
+        return mov { register_to_set, std::stoi(value) };
     }
     std::terminate(); // not implemented
 }
@@ -130,6 +135,7 @@ TEST_CASE("parser_test", "")
     REQUIRE(parse(input { "mov r 3" }) == ops { mov { 'r', 3 } });
     REQUIRE(parse(input { "mov r -3" }) == ops { mov { 'r', -3 } });
     REQUIRE(parse(input { "mov r -367" }) == ops { mov { 'r', -367 } });
+    REQUIRE(parse(input { "mov r g" }) == ops { mov { 'r', 'g' } });
 }
 
 TEST_CASE("simple_inc_and_dec_test", "")
