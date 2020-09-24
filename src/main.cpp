@@ -104,7 +104,6 @@ struct operation_visitor {
     }
     void operator()(const jnz&)
     {
-        std::terminate(); // not implemented
     }
     memory_t& mem;
 };
@@ -179,4 +178,17 @@ TEST_CASE("mov_set_by_another_register_value", "")
     input program { "mov q 10", "mov w q", "inc q" };
     result out { { "q", 11 }, { "w", 10 } };
     REQUIRE(assembler(program) == out);
+}
+
+TEST_CASE("jnz_no_operation", "")
+{
+    const result out {};
+    const input program1 { "jnz 0 0" };
+    REQUIRE(assembler(program1) == out);
+    const input program2 { "jnz 10 0" };
+    REQUIRE(assembler(program2) == out);
+    const input program3 { "jnz -10 0" };
+    REQUIRE(assembler(program3) == out);
+    const input program4 { "jnz 9 0" };
+    REQUIRE(assembler(program4) == out);
 }
