@@ -61,8 +61,7 @@ operation parse(const std::string& line)
         const std::string& value = line.substr(value_offset, line.length() - value_offset);
         return mov { line.at(4), std::stoi(value) }; // todo: assumed constant
     }
-
-    return {}; // TODO should not happen, terminate
+    std::terminate(); // not implemented
 }
 
 ops parse(const input& program)
@@ -113,8 +112,7 @@ result assembler(const input& in)
     for (const auto& op : operations) {
         process_operation(op, memory);
     }
-    return memory_to_result(
-        memory); // don't like the register name stored as string:/
+    return memory_to_result(memory); // don't like the register name stored as string:/
 }
 
 TEST_CASE("kata_test", "[tag_foo]")
