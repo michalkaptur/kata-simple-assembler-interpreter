@@ -49,6 +49,14 @@ using operation = std::variant<mov, inc, dec, jnz>;
 using ops = std::vector<operation>;
 using offset_t = constant;
 
+std::variant<reg_t, constant> parse_arg(const std::string& arg)
+{
+    if (std::isalpha(arg.at(0))) {
+        return reg_t { arg.at(0) };
+    }
+    return constant { std::stoi(arg) };
+}
+
 operation parse(const std::string& line)
 {
     const auto& op_name = line.substr(0, 3);
@@ -69,12 +77,11 @@ operation parse(const std::string& line)
     }
     if (op_name == "jnz") {
         constexpr auto separator = ' '; //assumed whitespace sanitized input
-        const auto first_arg_pos = line.find(separator);
-        const auto second_arg_pos = line.rfind(separator);
-        //TODO: could also be register names
+        const auto first_arg_pos = line.find(separator) + 1;
+        const auto second_arg_pos = line.rfind(separator) + 1;
         const std::string& first_arg = line.substr(first_arg_pos, second_arg_pos - first_arg_pos); //string_view?
         const std::string& second_arg = line.substr(second_arg_pos, line.length() - second_arg_pos);
-        return jnz { std::stoi(first_arg), std::stoi(second_arg) };
+        return jnz { parse_arg(first_arg), parse_arg(second_arg) };
     }
     std::terminate(); // not implemented
 }
@@ -169,6 +176,9 @@ TEST_CASE("parser_test", "")
     REQUIRE(parse(input { "mov r -367" }) == ops { mov { 'r', -367 } });
     REQUIRE(parse(input { "mov r g" }) == ops { mov { 'r', 'g' } });
     REQUIRE(parse(input { "jnz 0 0" }) == ops { jnz { 0, 0 } });
+    REQUIRE(parse(input { "jnz r 0" }) == ops { jnz { 'r', 0 } });
+    REQUIRE(parse(input { "jnz r g" }) == ops { jnz { 'r', 'g' } });
+    REQUIRE(parse(input { "jnz -145 z" }) == ops { jnz { -145, 'z' } });
 }
 
 TEST_CASE("simple_inc_and_dec_test", "")
