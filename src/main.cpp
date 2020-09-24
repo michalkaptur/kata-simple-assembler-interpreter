@@ -59,6 +59,7 @@ std::variant<reg_t, constant> parse_arg(const std::string& arg)
 
 operation parse(const std::string& line)
 {
+    constexpr static auto separator = ' '; //assumed whitespace sanitized input
     const auto& op_name = line.substr(0, 3);
     if (op_name == "inc") {
         return inc { line.at(4) };
@@ -67,16 +68,12 @@ operation parse(const std::string& line)
         return dec { line.at(4) };
     }
     if (op_name == "mov") {
-        constexpr auto value_offset = 6u;
         const reg_t register_to_set = line.at(4);
-        if (std::isalpha(line.at(value_offset))) {
-            return mov { register_to_set, line.at(value_offset) };
-        }
-        const std::string& value = line.substr(value_offset, line.length() - value_offset);
-        return mov { register_to_set, std::stoi(value) };
+        const auto second_arg_pos = line.rfind(separator) + 1;
+        const std::string& second_arg = line.substr(second_arg_pos, line.length() - second_arg_pos);
+        return mov { register_to_set, parse_arg(second_arg) };
     }
     if (op_name == "jnz") {
-        constexpr auto separator = ' '; //assumed whitespace sanitized input
         const auto first_arg_pos = line.find(separator) + 1;
         const auto second_arg_pos = line.rfind(separator) + 1;
         const std::string& first_arg = line.substr(first_arg_pos, second_arg_pos - first_arg_pos); //string_view?
