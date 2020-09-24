@@ -16,7 +16,7 @@ using constant = int;
 
 struct mov {
     reg_t reg;
-    std::variant<register_t, constant> value;
+    std::variant<reg_t, constant> value;
 };
 
 struct inc {
@@ -28,8 +28,8 @@ struct dec {
 };
 
 struct jnz {
-    std::variant<register_t, constant> x; // non zero?
-    std::variant<register_t, constant> y;
+    std::variant<reg_t, constant> x; // non zero?
+    std::variant<reg_t, constant> y;
 };
 bool operator==(const jnz& lhs, const jnz& rhs)
 {
@@ -80,12 +80,18 @@ ops parse(const input& program)
 
 using memory_t = std::unordered_map<char, int>;
 
+struct mov_visitor {
+    constant operator()(constant c) { return c; }
+    constant operator()(reg_t r) { return mem.at(r); }
+    const memory_t& mem;
+};
+
 struct operation_visitor {
     void operator()(const inc& op) { mem[op.reg]++; }
     void operator()(const dec& op) { mem[op.reg]--; }
     void operator()(const mov& op)
     {
-        mem[op.reg] = std::get<int>(op.value); // todo read register value
+        mem[op.reg] = std::visit(mov_visitor { mem }, op.value);
     }
     void operator()(const jnz&)
     {
@@ -155,5 +161,12 @@ TEST_CASE("multi_digit_constant_in_mov", "")
 {
     input program { "mov r 4567" };
     result out { { "r", 4567 } };
+    REQUIRE(assembler(program) == out);
+}
+
+TEST_CASE("mov_set_by_another_register_value", "")
+{
+    input program { "mov q 10", "mov w q", "inc q" };
+    result out { { "q", 11 }, { "w", 10 } };
     REQUIRE(assembler(program) == out);
 }
