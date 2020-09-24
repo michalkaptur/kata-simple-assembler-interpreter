@@ -66,6 +66,15 @@ operation parse(const std::string& line)
         const std::string& value = line.substr(value_offset, line.length() - value_offset);
         return mov { register_to_set, std::stoi(value) };
     }
+    if (op_name == "jnz") {
+        constexpr auto separator = ' '; //assumed whitespace sanitized input
+        const auto first_arg_pos = line.find(separator);
+        const auto second_arg_pos = line.rfind(separator);
+        //TODO: could also be register names
+        const std::string& first_arg = line.substr(first_arg_pos, second_arg_pos - first_arg_pos); //string_view?
+        const std::string& second_arg = line.substr(second_arg_pos, line.length() - second_arg_pos);
+        return jnz { std::stoi(first_arg), std::stoi(second_arg) };
+    }
     std::terminate(); // not implemented
 }
 
@@ -142,6 +151,7 @@ TEST_CASE("parser_test", "")
     REQUIRE(parse(input { "mov r -3" }) == ops { mov { 'r', -3 } });
     REQUIRE(parse(input { "mov r -367" }) == ops { mov { 'r', -367 } });
     REQUIRE(parse(input { "mov r g" }) == ops { mov { 'r', 'g' } });
+    REQUIRE(parse(input { "jnz 0 0" }) == ops { jnz { 0, 0 } });
 }
 
 TEST_CASE("simple_inc_and_dec_test", "")
