@@ -131,6 +131,7 @@ TEST_CASE("parser_test", "")
     REQUIRE(parse(input { "dec r" }) == ops { dec { 'r' } });
     REQUIRE(parse(input { "mov r 3" }) == ops { mov { 'r', 3 } });
     REQUIRE(parse(input { "mov r -3" }) == ops { mov { 'r', -3 } });
+    REQUIRE(parse(input { "mov r -367" }) == ops { mov { 'r', -367 } });
 }
 
 TEST_CASE("simple_inc_and_dec_test", "")
@@ -144,5 +145,11 @@ TEST_CASE("negative_constant_in_mov", "")
 {
     input program { "mov x -5" };
     result out { { "x", -5 } };
+    REQUIRE(assembler(program) == out);
+}
+TEST_CASE("multi_digit_constant_in_mov", "")
+{
+    input program { "mov r 4567" };
+    result out { { "r", 4567 } };
     REQUIRE(assembler(program) == out);
 }
