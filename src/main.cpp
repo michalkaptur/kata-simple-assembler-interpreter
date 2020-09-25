@@ -47,7 +47,7 @@ using result = std::unordered_map<std::string, int>;
 using input = std::vector<std::string>;
 using operation = std::variant<mov, inc, dec, jnz>;
 using ops = std::vector<operation>;
-using offset_t = constant;
+using flow_control_t = constant;
 
 std::variant<reg_t, constant> parse_arg(const std::string& arg)
 {
@@ -101,34 +101,34 @@ struct value_accessor {
 };
 
 struct operation_visitor {
-    constexpr static offset_t no_offset { 0 };
-    offset_t operator()(const inc& op)
+    constexpr static flow_control_t default_flow_control { 1 };
+    flow_control_t operator()(const inc& op)
     {
         mem[op.reg]++;
-        return no_offset;
+        return default_flow_control;
     }
-    offset_t operator()(const dec& op)
+    flow_control_t operator()(const dec& op)
     {
         mem[op.reg]--;
-        return no_offset;
+        return default_flow_control;
     }
-    offset_t operator()(const mov& op)
+    flow_control_t operator()(const mov& op)
     {
         mem[op.reg] = std::visit(value_accessor { mem }, op.value);
-        return no_offset;
+        return default_flow_control;
     }
-    offset_t operator()(const jnz& op)
+    flow_control_t operator()(const jnz& op)
     {
         const value_accessor accessor { mem };
         if (std::visit(accessor, op.x) == 0) {
-            return no_offset;
+            return default_flow_control;
         }
         return std::visit(accessor, op.y);
     }
     memory_t& mem;
 };
 
-offset_t process_operation(const operation& op, memory_t& memory)
+flow_control_t process_operation(const operation& op, memory_t& memory)
 {
     return std::visit(operation_visitor { memory }, op);
 }
@@ -150,8 +150,8 @@ result assembler(const input& in)
     memory_t memory;
     unsigned i { 0 };
     while (i < operations.size()) {
-        const auto offset = process_operation(operations.at(i), memory);
-        i = i + 1 + offset;
+        const auto flow_control = process_operation(operations.at(i), memory);
+        i = i + flow_control;
     }
     return memory_to_result(memory); // don't like the register name stored as string:/
 }
@@ -160,8 +160,8 @@ TEST_CASE("kata_test", "[tag_foo]")
 {
     input program { "mov a 5", "inc a", "dec a", "dec a", "jnz a -1", "inc a" };
     result out { { "a", 1 } };
-    // REQUIRE(assembler(program) == out);
-    // REQUIRE(assembler(program)["a"] == 1);
+    REQUIRE(assembler(program) == out);
+    REQUIRE(assembler(program)["a"] == 1);
 }
 
 TEST_CASE("parser_test", "")
@@ -210,17 +210,16 @@ TEST_CASE("jnz_no_operation", "")
     const result out {};
     const input program1 { "jnz 0 0" };
     REQUIRE(assembler(program1) == out);
-    const input program2 { "jnz 10 0" };
+    const input program2 { "jnz 10 1" };
     REQUIRE(assembler(program2) == out);
-    const input program3 { "jnz -10 0" };
+    const input program3 { "jnz -10 1" };
     REQUIRE(assembler(program3) == out);
-    const input program4 { "jnz 9 0" };
-    REQUIRE(assembler(program4) == out);
+    // const input program4 { "jnz 9 0" }; //infinite loop
 }
 
 TEST_CASE("jnz_move_forward", "")
 {
-    const input program { "jnz 6 1", "mov a 1", "mov b 10" };
+    const input program { "jnz 6 2", "mov a 1", "mov b 10" };
     const result out { { "b", 10 } };
     REQUIRE(assembler(program) == out);
 }
